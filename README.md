@@ -1,5 +1,87 @@
 # P2PNet (ICCV2021 Oral Presentation)
 
+## Rails gem wrapper
+
+This repository now includes a Ruby gem wrapper named `crowd_counting_p2pnet` so a Rails app can send an image path and receive:
+
+- an annotated image with detected heads marked in red;
+- an integer with the detected head count;
+- the raw detected points, if you also need coordinates.
+
+### What the gem expects
+
+The Ruby layer is a thin wrapper around the bundled Python inference script (`p2pnet_infer.py`). In practice, your Rails app needs:
+
+1. Ruby 3.0+
+2. Python 3 + the dependencies from `requirements.txt`
+3. PyTorch / Torchvision installed in the Python environment
+4. A trained P2PNet weight file (the default is `weights/SHTechA.pth`)
+
+### Install as a local gem in Rails
+
+Add this to your Rails application's `Gemfile`:
+
+```ruby
+gem 'crowd_counting_p2pnet', path: '/path/to/CrowdCounting-P2PNet'
+```
+
+Then run:
+
+```bash
+bundle install
+```
+
+### Basic Ruby usage
+
+```ruby
+result = CrowdCountingP2PNet.annotate(
+  image_path: params[:photo].path,
+  output_path: Rails.root.join('tmp', 'annotated.jpg').to_s,
+  threshold: 0.5,
+  device: 'auto' # 'auto', 'cpu', or 'cuda'
+)
+
+result.count
+# => 37
+
+result.annotated_image_path
+# => '/your/app/tmp/annotated.jpg'
+
+result.points
+# => [[x1, y1], [x2, y2], ...]
+```
+
+### Rails initializer example
+
+```ruby
+# config/initializers/crowd_counting_p2pnet.rb
+CrowdCountingP2PNet.configure do |config|
+  config.python_bin = ENV.fetch('P2PNET_PYTHON_BIN', 'python3')
+  config.weight_path = Rails.root.join('vendor', 'models', 'SHTechA.pth').to_s
+end
+```
+
+### Service object example in Rails
+
+```ruby
+class CrowdHeadCounter
+  def self.call(uploaded_file)
+    CrowdCountingP2PNet.annotate(
+      image_path: uploaded_file.path,
+      output_path: Rails.root.join('tmp', "annotated-#{SecureRandom.hex(6)}.jpg").to_s
+    )
+  end
+end
+```
+
+### CLI usage
+
+```bash
+bundle exec exe/crowd_counting_p2pnet path/to/image.jpg tmp/output.jpg
+```
+
+The command prints JSON with the count, output image path, and point list.
+
 This repository contains codes for the official implementation in PyTorch of **P2PNet** as described in [Rethinking Counting and Localization in Crowds: A Purely Point-Based Framework](https://arxiv.org/abs/2107.12746).
  
 A brief introduction of P2PNet can be found at [机器之心 (almosthuman)](https://mp.weixin.qq.com/s?__biz=MzA3MzI4MjgzMw==&mid=2650827826&idx=3&sn=edd3d66444130fb34a59d08fab618a9e&chksm=84e5a84cb392215a005a3b3424f20a9d24dc525dcd933960035bf4b6aa740191b5ecb2b7b161&mpshare=1&scene=1&srcid=1004YEOC7HC9daYRYeUio7Xn&sharer_sharetime=1633675738338&sharer_shareid=7d375dccd3b2f9eec5f8b27ee7c04883&version=3.1.16.5505&platform=win#rd).
