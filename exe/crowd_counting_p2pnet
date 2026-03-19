@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'json'
+require_relative '../lib/crowd_counting_p2pnet'
+
+image_path = ARGV.shift
+abort 'usage: crowd_counting_p2pnet IMAGE_PATH [OUTPUT_PATH]' unless image_path
+output_path = ARGV.shift
+
+result = CrowdCountingP2PNet.annotate(image_path: image_path, output_path: output_path)
+puts JSON.pretty_generate(
+  count: result.count,
+  annotated_image_path: result.annotated_image_path,
+  points: result.points
+)
